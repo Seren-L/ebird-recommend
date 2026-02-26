@@ -1,0 +1,46 @@
+/* Design tokens */
+:root {
+  --color-bg:        #f4f6f8;
+  --color-surface:   #ffffff;
+  --color-border:    #e2e8f0;
+  --color-text:      #1a202c;
+  --color-text-muted:#64748b;
+  --color-accent:    #2563eb;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg:        #0f172a;
+    --color-surface:   #1e293b;
+    --color-border:    #334155;
+    --color-text:      #f1f5f9;
+    --color-text-muted:#94a3b8;
+    --color-accent:    #60a5fa;
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  /* reset Vite's centering */
+  display: block;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+
+a { color: var(--color-accent); }
+
+h1, h2, h3 { margin: 0; }
