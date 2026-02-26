@@ -158,9 +158,14 @@ Lifer and notable status are **not** included in the score — use the filter pa
 
 ### Frontend → GitHub Pages
 
-```bash
-cd frontend
-# Edit .env.production: VITE_API_URL=https://your-app.railway.app
-npm run build
-# Deploy dist/ to gh-pages branch (GitHub Actions workflow TBD)
-```
+Handled automatically by `.github/workflows/deploy-frontend.yml` on every push to `main`/`master` that touches `frontend/`.
+
+To set up manually:
+1. Go to repo **Settings → Pages → Source → GitHub Actions**
+2. Edit `frontend/.env.production` with your Railway URL
+3. Push — the workflow builds and deploys `frontend/dist/` to GitHub Pages
+
+### Live
+
+- Frontend: https://seren-l.github.io/ebird-recommend
+- Backend: https://ebird-recommend-production.up.railway.app
