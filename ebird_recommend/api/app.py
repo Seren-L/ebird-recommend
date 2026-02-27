@@ -10,7 +10,7 @@ from typing import Annotated
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
-from ebird_recommend.core.models import Hotspot, NotableObservation, RecommendRequest, Recommendation
+from ebird_recommend.core.models import Hotspot, HotspotDetailResponse, NotableObservation, RecommendRequest, Recommendation
 from ebird_recommend.core.recommender import recommend
 from .deps import api_key_dep, get_client
 
@@ -96,3 +96,22 @@ def recommend_route(
         recs = [r for r in recs if not r.is_notable]
 
     return recs[:body.top]
+
+
+@app.get("/hotspot/{loc_id}", response_model=HotspotDetailResponse)
+def hotspot_detail(
+    loc_id: str,
+    days: Annotated[int, Query(ge=1, le=30, description="Days back to search")] = 14,
+    limit: Annotated[int, Query(ge=1, le=200, description="Max checklists to return")] = 10,
+    api_key: Annotated[str, Depends(api_key_dep)] = ...,
+):
+    """Return notable obs, all recent obs, and recent checklists for a specific hotspot."""
+    try:
+        client = get_client(api_key)
+        notable  = client.notable_obs_at_location(loc_id, days)
+        recent   = client.recent_obs_at_location(loc_id, days)
+        checklists = client.checklists_at_location(loc_id, limit)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+    return HotspotDetailResponse(notable=notable, recent=recent, checklists=checklists)

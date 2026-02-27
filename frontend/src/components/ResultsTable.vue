@@ -24,9 +24,9 @@
               <div class="sci-name">{{ rec.scientific_name }}</div>
             </td>
             <td>
-              <a :href="rec.hotspot_url" target="_blank" rel="noopener" class="loc-link">
+              <RouterLink :to="`/hotspot/${rec.loc_id}`" class="loc-link">
                 {{ rec.loc_name }}
-              </a>
+              </RouterLink>
               <div class="reason">{{ rec.reason }}</div>
             </td>
             <td class="num">{{ rec.distance_km.toFixed(1) }}</td>

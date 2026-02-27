@@ -85,3 +85,25 @@ class Recommendation(BaseModel):
     # Links
     species_url: str = ""
     hotspot_url: str = ""
+
+
+class Checklist(BaseModel):
+    """A single eBird checklist submission at a location.
+
+    Constructed manually in client.py (not from raw API JSON directly)
+    because the eBird response has an inconsistent shape: loc_name is
+    nested inside a 'loc' sub-object and the date is in 'isoObsDate'.
+    """
+    sub_id: str
+    loc_id: str
+    loc_name: str
+    obs_dt: str               # ISO format "2026-02-25 17:09"
+    obs_time: Optional[str] = None
+    num_species: int
+
+
+class HotspotDetailResponse(BaseModel):
+    """Aggregated detail for a single hotspot."""
+    notable: list[NotableObservation]
+    recent: list[Observation]
+    checklists: list[Checklist]
