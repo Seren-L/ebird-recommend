@@ -7,7 +7,7 @@ Attribution: Data provided by eBird (https://ebird.org), Cornell Lab of Ornithol
 import json
 import httpx
 from typing import Optional
-from .models import Hotspot, Observation, NotableObservation
+from .models import Checklist, Hotspot, Observation, NotableObservation
 from .cache import Cache
 
 BASE_URL = "https://api.ebird.org/v2"
@@ -82,6 +82,40 @@ class EBirdClient:
             {"lat": lat, "lng": lng, "dist": dist_km, "back": back, "detail": "simple"},
         )
         return [NotableObservation(**o) for o in data]
+
+    def notable_obs_at_location(
+        self,
+        loc_id: str,
+        back: int = 14,
+    ) -> list[NotableObservation]:
+        """Recent notable (rare/flagged) observations at a specific hotspot."""
+        data = self._get(
+            f"/data/obs/{loc_id}/recent/notable",
+            {"back": back, "detail": "simple"},
+        )
+        return [NotableObservation(**o) for o in data]
+
+    def checklists_at_location(
+        self,
+        loc_id: str,
+        limit: int = 10,
+    ) -> list[Checklist]:
+        """Most recent checklists submitted at a specific hotspot."""
+        data = self._get(
+            f"/product/lists/{loc_id}",
+            {"maxResults": limit},
+        )
+        return [
+            Checklist(
+                sub_id=c["subId"],
+                loc_id=c["locId"],
+                loc_name=c.get("loc", {}).get("name", ""),
+                obs_dt=c["isoObsDate"],
+                obs_time=c.get("obsTime"),
+                num_species=c["numSpecies"],
+            )
+            for c in data
+        ]
 
     def nearby_recent_obs(
         self,

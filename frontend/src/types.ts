@@ -18,6 +18,37 @@ export interface RecommendRequest {
   notable?: FilterMode  // "all" | "yes" = rare only   | "no" = non-rare only
 }
 
+// camelCase — matches eBird API serialization via Pydantic alias_generator=to_camel
+export interface Observation {
+  speciesCode: string
+  comName: string
+  sciName: string
+  locId: string
+  locName: string
+  obsDt: string
+  howMany?: number
+  lat: number
+  lng: number
+  subId: string
+}
+
+export interface Checklist {
+  sub_id: string
+  loc_id: string
+  loc_name: string
+  obs_dt: string
+  obs_time?: string
+  num_species: number
+  num_observers?: number
+  duration_hrs?: number
+}
+
+export interface HotspotDetail {
+  notable: Observation[]
+  recent: Observation[]
+  checklists: Checklist[]
+}
+
 export interface Recommendation {
   species_code: string
   common_name: string
