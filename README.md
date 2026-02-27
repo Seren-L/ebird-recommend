@@ -11,6 +11,7 @@ Recommends nearby birding hotspots and target species based on your eBird life l
 - Ranks (species, location) pairs by recency, report frequency, and distance
 - Marks lifers (species not yet on your life list) and eBird notable observations
 - Filters: lifer status (all / lifers only / seen before), eBird notable (all / notable only / non-notable)
+- **Hotspot detail page** — click any location to see notable obs, full species list, and recent checklists
 - 4-hour file-based cache to avoid repeated API calls
 - CLI for local use; FastAPI backend + Vue 3 frontend for web use
 - API key supplied per-request — no server-side key required for multi-user deployment
@@ -84,13 +85,19 @@ ebird_recommend/
 
 frontend/
   src/
-    api.ts          fetch wrapper for POST /recommend
+    api.ts          fetch wrappers (recommend + hotspot detail)
     store.ts        localStorage helpers + CSV parser
     types.ts        TypeScript interfaces
+    views/
+      HomeView.vue        Recommend form + results
+      HotspotDetailView.vue  Hotspot detail page
     components/
       SettingsPanel.vue   API key input + CSV upload
       RecommendForm.vue   Search parameters form
       ResultsTable.vue    Results display
+
+docs/
+  feature-hotspot-detail.md   Design doc for hotspot detail feature
 
 data/
   MyEBirdData.csv   (gitignored) your eBird export
@@ -124,6 +131,18 @@ docker-compose.yml  local dev stack
 ```
 
 `lifer` and `notable` each accept `"all"` / `"yes"` / `"no"`. Filtering is applied after scoring; `top` truncates the final filtered list.
+
+### `GET /hotspot/{loc_id}?days=14&limit=10`
+
+Returns notable obs, all recent obs, and recent checklists for a specific hotspot.
+
+```json
+{
+  "notable":    [ { "comName": "...", "sciName": "...", "obsDt": "...", ... } ],
+  "recent":     [ { "comName": "...", "sciName": "...", "obsDt": "...", ... } ],
+  "checklists": [ { "sub_id": "...", "obs_dt": "...", "num_species": 42, ... } ]
+}
+```
 
 ### `GET /hotspots?lat&lng&radius`
 ### `GET /notable?lat&lng&radius&days`

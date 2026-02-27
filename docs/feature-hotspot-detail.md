@@ -1,126 +1,99 @@
-# Feature: Hotspot Detail View
+# Feature: Hotspot Detail Page
 
 ## Goal
 
-When the user clicks a hotspot in the recommendation results, open a detail panel
-showing all species and checklists recently recorded at that specific location.
+When the user clicks a location name in the recommendation results, navigate to a
+dedicated page showing everything recently recorded at that specific hotspot.
+
+**Status: Shipped** (`feat/hotspot-detail` → merged to master)
 
 ---
 
 ## User Stories
 
-1. **Notable species** — As a birder, I want to see all eBird-notable species at a
-   hotspot so I can judge whether a rare bird is worth the trip.
-
-2. **Full species list** — As a birder, I want to see every species recently recorded
-   there (not just the top recommendation), with lifer status marked, so I know what
-   else I might tick off.
-
-3. **Recent checklists** — As a birder, I want to see a list of recent checklists
-   (date, observer count, species count, link to eBird) so I can gauge how actively
-   birded the spot is.
-
----
-
-## Scope
-
-### In scope
-- Detail panel (side sheet or modal) triggered by clicking a hotspot in ResultsTable
-- Three tabs or sections: **Notable** / **All Species** / **Checklists**
-- Lifer badges on species (cross-referenced against the user's life list in localStorage)
-- Link to the hotspot's eBird page
-- `days` parameter reused from the main search
-
-### Out of scope (future)
-- Map view
-- Historical trends / charts
-- Comparing two hotspots side-by-side
-
----
-
-## eBird API Calls Needed
-
-| Data | Endpoint | Already in client.py? |
-|------|----------|-----------------------|
-| All recent obs at hotspot | `GET /data/obs/{locId}/recent` | Yes (`recent_obs_at_location`) |
-| Notable obs at hotspot | `GET /data/obs/{locId}/recent/notable` | No — needs adding |
-| Recent checklists at hotspot | `GET /product/lists/{locId}` | No — needs adding |
-
----
-
-## Backend Changes
-
-### New client methods (core/client.py)
-```python
-def notable_obs_at_location(self, loc_id: str, back: int = 14) -> list[NotableObservation]
-def checklists_at_location(self, loc_id: str, back: int = 14) -> list[Checklist]
-```
-
-### New Pydantic model (core/models.py)
-```python
-class Checklist(BaseModel):
-    sub_id: str        # subId
-    loc_id: str        # locId
-    obs_dt: str        # obsDt
-    num_species: int   # numSpecies
-    # (obs_time, duration_hrs optional)
-```
-
-### New API endpoint (api/app.py)
-```
-GET /hotspot/{loc_id}?days=14
-```
-Returns:
-```json
-{
-  "notable":    [ ...NotableObservation ],
-  "recent":     [ ...Observation ],
-  "checklists": [ ...Checklist ]
-}
-```
-Accepts the same `X-EBird-Api-Token` header as `/recommend`.
-
----
-
-## Frontend Changes
-
-### New component: HotspotDetail.vue
-- Receives `locId`, `locName`, `days`, `lifeList` as props
-- Fetches `GET /hotspot/{loc_id}?days={days}` on mount
-- Three sections: Notable / All Species / Checklists
-- Species rows show Lifer badge if not in life list
-- "View on eBird" link: `https://ebird.org/hotspot/{locId}`
-
-### Trigger
-- In ResultsTable.vue: make the location name a clickable button
-- Opens HotspotDetail as a side panel (fixed right drawer, ~400px wide)
-  - Simple v-if toggle, no router needed at this stage
-
-### Extensibility note
-The side panel (DetailPanel.vue) should be a generic shell that accepts a `component`
-slot — so future detail views (e.g. species detail, checklist detail) can reuse the
-same open/close/loading/error skeleton without duplicating code.
+1. **Notable species** — See all eBird-notable species at a hotspot to judge whether
+   a rarity is worth the trip.
+2. **Full species list** — See every species recently recorded there, with Lifer badges
+   cross-referenced against the life list stored in localStorage.
+3. **Recent checklists** — See the 10 most recent trip reports (date, species count,
+   link to eBird) to gauge how actively birded the location is.
 
 ---
 
 ## Decisions
 
-1. **Checklists** — Show 10 most recent by default. Backend accepts a `limit`
-   query param (default 10) for future extensibility.
-
-2. **Panel vs. page** — Independent page at `/hotspot/:locId`. Requires adding
-   vue-router. Makes URLs shareable and browser back button works. The home page
-   (`/`) keeps the existing recommend flow.
-
-3. **Caching** — Reuse the existing 4-hour file cache (no change needed).
+| Question | Decision | Rationale |
+|----------|----------|-----------|
+| Side panel vs. page | Independent page at `/#/hotspot/:locId` | URL shareable, back button works |
+| Checklist count | Default 10, `limit` param for future extensibility | Avoids overwhelming the UI |
+| Caching | Reuse existing 4-hour file cache | No extra complexity needed |
+| Router history | `createWebHashHistory()` | Works with GitHub Pages static hosting |
 
 ---
 
-## Routing Plan (vue-router)
+## API
+
+### `GET /hotspot/{loc_id}?days=14&limit=10`
+
+Header: `X-EBird-Api-Token: <key>`
+
+Response:
+```json
+{
+  "notable":    [ ...Observation (camelCase, eBird aliases) ],
+  "recent":     [ ...Observation (camelCase, eBird aliases) ],
+  "checklists": [ ...Checklist (snake_case, constructed manually) ]
+}
+```
+
+#### eBird endpoints used
+
+| Data | eBird endpoint |
+|------|----------------|
+| Notable obs at hotspot | `GET /data/obs/{locId}/recent/notable` |
+| All recent obs at hotspot | `GET /data/obs/{locId}/recent` |
+| Recent checklists | `GET /product/lists/{locId}?maxResults=limit` |
+
+#### Serialisation note
+
+`Observation` / `NotableObservation` use `alias_generator=to_camel` and serialize
+with camelCase keys (`comName`, `sciName`, `speciesCode` …). `Checklist` is
+constructed manually in `client.py` (not from raw JSON) because the eBird response
+has an inconsistent shape: `locName` is nested inside a `loc` sub-object and the
+usable date is in `isoObsDate`, not `obsDt`. TypeScript types reflect this split.
+
+---
+
+## File Map
+
+| File | Change |
+|------|--------|
+| `ebird_recommend/core/models.py` | Added `Checklist`, `HotspotDetailResponse` |
+| `ebird_recommend/core/client.py` | Added `notable_obs_at_location()`, `checklists_at_location()` |
+| `ebird_recommend/api/app.py` | Added `GET /hotspot/{loc_id}` route |
+| `frontend/package.json` | Added `vue-router@4` |
+| `frontend/src/main.ts` | Router setup with hash history, two routes |
+| `frontend/src/App.vue` | Refactored to shell: header + `<RouterView>` + SettingsPanel |
+| `frontend/src/views/HomeView.vue` | New — original App.vue main content |
+| `frontend/src/views/HotspotDetailView.vue` | New — hotspot detail page |
+| `frontend/src/components/ResultsTable.vue` | Location name → `<RouterLink>` |
+| `frontend/src/api.ts` | Added `fetchHotspotDetail()` |
+| `frontend/src/types.ts` | Added `Observation` (camelCase), `Checklist`, `HotspotDetail` |
+
+---
+
+## Routes
 
 | Path | Component | Notes |
 |------|-----------|-------|
-| `/` | App.vue (existing) | Recommend form + results |
-| `/hotspot/:locId` | HotspotDetail.vue | Hotspot detail page |
+| `/#/` | `HomeView.vue` | Recommend form + results (unchanged UX) |
+| `/#/hotspot/:locId` | `HotspotDetailView.vue` | Fetches on mount, shows 3 sections |
 
-`locId` from eBird (e.g. `L232592`). Page fetches its own data on mount.
+---
+
+## Out of Scope (Future)
+
+- Map view of the hotspot
+- Historical species trends / charts
+- Side-by-side hotspot comparison
+- Pagination for checklists beyond 10
